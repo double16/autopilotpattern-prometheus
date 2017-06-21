@@ -56,3 +56,6 @@ CMD ["/usr/local/bin/containerpilot", \
      "-storage.local.path=/prometheus", \
      "-web.console.libraries=/etc/prometheus/console_libraries", \
      "-web.console.templates=/etc/prometheus/consoles" ]
+
+HEALTHCHECK --interval=1m30s --timeout=10s --retries=3 CMD curl -f http://localhost:9090/graph || exit 1
+
