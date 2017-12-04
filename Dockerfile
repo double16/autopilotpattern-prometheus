@@ -1,4 +1,4 @@
-FROM alpine:3.4
+FROM alpine:3.6
 
 # The official Promtheus base image has no package manager so rather than
 # artisanally hand-rolling curl and the rest of our stack we'll just use
@@ -26,36 +26,47 @@ RUN curl -Lso /tmp/consul-template_0.14.0_linux_amd64.zip https://releases.hashi
     && mv consul-template /bin \
     && rm /tmp/consul-template_0.14.0_linux_amd64.zip
 
-# Add Containerpilot and set its configuration
-ENV CONTAINERPILOT_VERSION 2.4.4
-ENV CONTAINERPILOT file:///etc/containerpilot.json
+# Add consul agent
+RUN export CONSUL_VERSION=1.0.1 \
+    && export CONSUL_CHECKSUM=eac5755a1d19e4b93f6ce30caaf7b3bd8add4557b143890b1c07f5614a667a68 \
+    && curl --retry 7 --fail -vo /tmp/consul.zip "https://releases.hashicorp.com/consul/${CONSUL_VERSION}/consul_${CONSUL_VERSION}_linux_amd64.zip" \
+    && echo "${CONSUL_CHECKSUM}  /tmp/consul.zip" | sha256sum -c \
+    && unzip /tmp/consul -d /usr/local/bin \
+    && rm /tmp/consul.zip \
+    && mkdir -p /etc/consul \
+    && mkdir -p /var/lib/consul
 
-RUN export CONTAINERPILOT_CHECKSUM=6194ee482dae95844046266dcec2150655ef80e9 \
-    && export archive=containerpilot-${CONTAINERPILOT_VERSION}.tar.gz \
-    && curl -Lso /tmp/${archive} \
-         "https://github.com/joyent/containerpilot/releases/download/${CONTAINERPILOT_VERSION}/${archive}" \
-    && echo "${CONTAINERPILOT_CHECKSUM}  /tmp/${archive}" | sha1sum -c \
-    && tar zxf /tmp/${archive} -C /usr/local/bin \
-    && rm /tmp/${archive}
+# Add ContainerPilot and set its configuration file path
+ENV CONTAINERPILOT_VER 3.5.1
+ENV CONTAINERPILOT /etc/containerpilot.json5
+RUN export CONTAINERPILOT_CHECKSUM=7ee8e59588b6b593325930b0dc18d01f666031d7 \
+    && curl -Lso /tmp/containerpilot.tar.gz \
+    "https://github.com/joyent/containerpilot/releases/download/${CONTAINERPILOT_VER}/containerpilot-${CONTAINERPILOT_VER}.tar.gz" \
+    && echo "${CONTAINERPILOT_CHECKSUM}  /tmp/containerpilot.tar.gz" | sha1sum -c \
+    && tar zxf /tmp/containerpilot.tar.gz -C /usr/local/bin \
+    && rm /tmp/containerpilot.tar.gz
+
+COPY node_exporter/node_exporter /usr/local/bin/node_exporter
 
 # Add Containerpilot configuration
-COPY etc/containerpilot.json /etc
-ENV CONTAINERPILOT file:///etc/containerpilot.json
+COPY etc/containerpilot.json5 /etc
 
 # Add Prometheus config template
 # ref https://prometheus.io/docs/operating/configuration/
 # for details on building your own config
 COPY etc/prometheus.yml.ctmpl /etc/prometheus/prometheus.yml.ctmpl
 
-# Override the entrypoint to include Containerpilot
 WORKDIR /prometheus
-ENTRYPOINT []
-CMD ["/usr/local/bin/containerpilot", \
-     "/bin/prometheus", \
-     "-config.file=/etc/prometheus/prometheus.yml", \
-     "-storage.local.path=/prometheus", \
-     "-web.console.libraries=/etc/prometheus/console_libraries", \
-     "-web.console.templates=/etc/prometheus/consoles" ]
+CMD ["/usr/local/bin/containerpilot"]
 
 HEALTHCHECK --interval=1m30s --timeout=10s --retries=3 CMD curl -f http://localhost:9090/graph || exit 1
 
+LABEL org.label-schema.build-date=$BUILD_DATE \
+    org.label-schema.license="MPL-2.0" \
+    org.label-schema.vendor="https://bitbucket.org/double16" \
+    org.label-schema.name="Autopilot Prometheus Server" \
+    org.label-schema.url="https://github.com/double16/autopilotpattern-prometheus" \
+    org.label-schema.docker.dockerfile="Dockerfile" \
+    org.label-schema.vcs-ref=$SOURCE_REF \
+    org.label-schema.vcs-type='git' \
+    org.label-schema.vcs-url="https://github.com/double16/autopilotpattern-prometheus.git"
