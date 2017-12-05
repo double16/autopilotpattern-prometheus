@@ -2,8 +2,8 @@
 
 This repo is an extension of the official [Prometheus.io](https://prometheus.io) Docker image, designed to be self-operating according to the [Autopilot Pattern](http://autopilotpattern.io/). This application demonstrates support for configuring Prometheus to be used as a metrics collector for applications using the [ContainerPilot telemetry endpoint](https://www.joyent.com/blog/containerpilot-telemetry).
 
-[![DockerPulls](https://img.shields.io/docker/pulls/autopilotpattern/prometheus.svg)](https://registry.hub.docker.com/u/autopilotpattern/prometheus/)
-[![DockerStars](https://img.shields.io/docker/stars/autopilotpattern/prometheus.svg)](https://registry.hub.docker.com/u/autopilotpattern/prometheus/)
+[![DockerPulls](https://img.shields.io/docker/pulls/pdouble16/autopilotpattern-prometheus.svg)](https://registry.hub.docker.com/u/pdouble16/autopilotpattern-prometheus/)
+[![DockerStars](https://img.shields.io/docker/stars/pdouble16/autopilotpattern-prometheus.svg)](https://registry.hub.docker.com/u/pdouble16/autopilotpattern-prometheus/)
 
 ### Using Prometheus with ContainerPilot
 

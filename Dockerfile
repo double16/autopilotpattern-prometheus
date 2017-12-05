@@ -1,14 +1,17 @@
 FROM alpine:3.6
 
-# The official Promtheus base image has no package manager so rather than
+# The official Prometheus base image has no package manager so rather than
 # artisanally hand-rolling curl and the rest of our stack we'll just use
 # Alpine so we can use `docker build`.
 
-RUN apk add --update curl
+RUN apk add --update curl bash
 
 # add Prometheus. alas, the Prometheus developers provide no checksum
-RUN export prom=prometheus-1.3.0.linux-amd64 \
-    && curl -Lso /tmp/${prom}.tar.gz https://github.com/prometheus/prometheus/releases/download/v1.3.0/${prom}.tar.gz \
+RUN export PROM_VERSION=1.7.1 \
+    && export PROM_CHECKSUM=4779d5cf08c50ed368a57b102ab3895e5e830d6b355ca4bfecf718a034a164e0 \
+    && export prom=prometheus-${PROM_VERSION}.linux-amd64 \
+    && curl -Lso /tmp/${prom}.tar.gz https://github.com/prometheus/prometheus/releases/download/v${PROM_VERSION}/${prom}.tar.gz \
+    && echo "${PROM_CHECKSUM}  /tmp/${prom}.tar.gz" | sha256sum -c \
     && tar zxf /tmp/${prom}.tar.gz -C /tmp \
     && mkdir /etc/prometheus /usr/share/prometheus \
     && mv /tmp/${prom}/prometheus /bin/prometheus \
@@ -17,15 +20,10 @@ RUN export prom=prometheus-1.3.0.linux-amd64 \
     && mv /tmp/${prom}/consoles /usr/share/prometheus/consoles \
     && mv /tmp/${prom}/console_libraries /usr/share/prometheus/console_libraries \
     && ln -s /usr/share/prometheus/console_libraries /usr/share/prometheus/consoles/ /etc/prometheus/ \
-    && rm /tmp/prometheus-1.3.0.linux-amd64.tar.gz
+    && rm /tmp/prometheus-${PROM_VERSION}.linux-amd64.tar.gz
 
-# get consul-template
-RUN curl -Lso /tmp/consul-template_0.14.0_linux_amd64.zip https://releases.hashicorp.com/consul-template/0.14.0/consul-template_0.14.0_linux_amd64.zip \
-    && echo "7c70ea5f230a70c809333e75fdcff2f6f1e838f29cfb872e1420a63cdf7f3a78" /tmp/consul-template_0.14.0_linux_amd64.zip \
-    && unzip /tmp/consul-template_0.14.0_linux_amd64.zip \
-    && mv consul-template /bin \
-    && rm /tmp/consul-template_0.14.0_linux_amd64.zip
-
+# Install Consul
+# Releases at https://releases.hashicorp.com/consul
 # Add consul agent
 RUN export CONSUL_VERSION=1.0.1 \
     && export CONSUL_CHECKSUM=eac5755a1d19e4b93f6ce30caaf7b3bd8add4557b143890b1c07f5614a667a68 \
@@ -34,11 +32,22 @@ RUN export CONSUL_VERSION=1.0.1 \
     && unzip /tmp/consul -d /usr/local/bin \
     && rm /tmp/consul.zip \
     && mkdir -p /etc/consul \
-    && mkdir -p /var/lib/consul
+    && mkdir -p /var/lib/consul \
+    && mkdir /config
+
+# Install Consul template
+# Releases at https://releases.hashicorp.com/consul-template/
+RUN set -ex \
+    && export CONSUL_TEMPLATE_VERSION=0.18.0 \
+    && export CONSUL_TEMPLATE_CHECKSUM=f7adf1f879389e7f4e881d63ef3b84bce5bc6e073eb7a64940785d32c997bc4b \
+    && curl --retry 7 --fail -Lso /tmp/consul-template.zip "https://releases.hashicorp.com/consul-template/${CONSUL_TEMPLATE_VERSION}/consul-template_${CONSUL_TEMPLATE_VERSION}_linux_amd64.zip" \
+    && echo "${CONSUL_TEMPLATE_CHECKSUM}  /tmp/consul-template.zip" | sha256sum -c \
+    && unzip /tmp/consul-template.zip -d /usr/local/bin \
+    && rm /tmp/consul-template.zip
 
 # Add ContainerPilot and set its configuration file path
 ENV CONTAINERPILOT_VER 3.5.1
-ENV CONTAINERPILOT /etc/containerpilot.json5
+ENV CONTAINERPILOT /etc/containerpilot.json
 RUN export CONTAINERPILOT_CHECKSUM=7ee8e59588b6b593325930b0dc18d01f666031d7 \
     && curl -Lso /tmp/containerpilot.tar.gz \
     "https://github.com/joyent/containerpilot/releases/download/${CONTAINERPILOT_VER}/containerpilot-${CONTAINERPILOT_VER}.tar.gz" \
@@ -49,14 +58,16 @@ RUN export CONTAINERPILOT_CHECKSUM=7ee8e59588b6b593325930b0dc18d01f666031d7 \
 COPY node_exporter/node_exporter /usr/local/bin/node_exporter
 
 # Add Containerpilot configuration
-COPY etc/containerpilot.json5 /etc
+COPY etc/containerpilot.json /etc
 
 # Add Prometheus config template
 # ref https://prometheus.io/docs/operating/configuration/
 # for details on building your own config
 COPY etc/prometheus.yml.ctmpl /etc/prometheus/prometheus.yml.ctmpl
+COPY bin /bin
 
 WORKDIR /prometheus
+ENTRYPOINT []
 CMD ["/usr/local/bin/containerpilot"]
 
 HEALTHCHECK --interval=1m30s --timeout=10s --retries=3 CMD curl -f http://localhost:9090/graph || exit 1
