@@ -7,8 +7,8 @@ FROM alpine:3.6
 RUN apk add --update curl bash
 
 # add Prometheus. alas, the Prometheus developers provide no checksum
-RUN export PROM_VERSION=1.7.1 \
-    && export PROM_CHECKSUM=4779d5cf08c50ed368a57b102ab3895e5e830d6b355ca4bfecf718a034a164e0 \
+RUN export PROM_VERSION=1.7.2 \
+    && export PROM_CHECKSUM=a5d56b613b77e1d12e99ed5f77359d097c63cb6db64e8b04496eff186df11484 \
     && export prom=prometheus-${PROM_VERSION}.linux-amd64 \
     && curl -Lso /tmp/${prom}.tar.gz https://github.com/prometheus/prometheus/releases/download/v${PROM_VERSION}/${prom}.tar.gz \
     && echo "${PROM_CHECKSUM}  /tmp/${prom}.tar.gz" | sha256sum -c \
