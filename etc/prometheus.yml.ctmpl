@@ -25,7 +25,7 @@ scrape_configs:
 
     consul_sd_configs:
      - server: '{{env "CONSUL"}}:8500'
-       services: ['containerpilot','node_exporter']
+       services: ['containerpilot','node-exporter']
 
   - job_name: 'prometheus'
     metrics_path: /metrics
