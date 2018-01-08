@@ -21,7 +21,7 @@
         "-web.console.templates=/etc/prometheus/consoles"
       ],
       "health": {
-        "exec": "curl -fso /dev/null http://localhost:9090/metrics",
+        "exec": ["/bin/consul-manage", "health"],
         "interval": 10,
         "ttl": 25
       },
@@ -33,11 +33,16 @@
     },
     {{ if .CONSUL_AGENT }}
     {
+      "name": "consul-preStart",
+      "exec": [
+        "/bin/consul-manage",
+        "preStart"
+      ]
+    },
+    {
       "name": "consul-agent",
       "exec": ["/usr/local/bin/consul", "agent",
-                  "-data-dir=/data",
-                  "-config-dir=/config",
-                  "-log-level=err",
+                  "-config-dir=/etc/consul",
                   "-rejoin",
                   "-retry-join", "{{ .CONSUL | default "consul" }}",
                   "-retry-max", "10",
@@ -47,6 +52,10 @@
         "interval": 10,
         "ttl": 25
       },
+      "when": {
+        "source": "consul-preStart",
+        "once": "exitSuccess"
+      },
       "restarts": "unlimited"
     },
     {{ end }}
@@ -55,7 +64,7 @@
         "port": 9100,
         "exec": [
           "/usr/local/bin/node_exporter",
-          "-web.listen-address=:9100"
+          "--web.listen-address=:9100"
         ],
         "health": {
           "exec": [ "/usr/bin/curl", "--fail", "-s", "-o", "/dev/null", "http://localhost:9100/metrics"

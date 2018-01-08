@@ -27,13 +27,12 @@ RUN export PROM_VERSION=1.7.2 \
 # Add consul agent
 RUN export CONSUL_VERSION=1.0.2 \
     && export CONSUL_CHECKSUM=418329f0f4fc3f18ef08674537b576e57df3f3026f258794b4b4b611beae6c9b \
-    && curl --retry 7 --fail -vo /tmp/consul.zip "https://releases.hashicorp.com/consul/${CONSUL_VERSION}/consul_${CONSUL_VERSION}_linux_amd64.zip" \
+    && curl --silent --retry 7 --fail -o /tmp/consul.zip "https://releases.hashicorp.com/consul/${CONSUL_VERSION}/consul_${CONSUL_VERSION}_linux_amd64.zip" \
     && echo "${CONSUL_CHECKSUM}  /tmp/consul.zip" | sha256sum -c \
     && unzip /tmp/consul -d /usr/local/bin \
     && rm /tmp/consul.zip \
     && mkdir -p /etc/consul \
-    && mkdir -p /var/lib/consul \
-    && mkdir /config
+    && mkdir -p /var/lib/consul
 
 # Install Consul template
 # Releases at https://releases.hashicorp.com/consul-template/
@@ -55,7 +54,11 @@ RUN export CONTAINERPILOT_CHECKSUM=57857530356708e9e8672d133b3126511fb785ab \
     && tar zxf /tmp/containerpilot.tar.gz -C /usr/local/bin \
     && rm /tmp/containerpilot.tar.gz
 
-COPY node_exporter/node_exporter /usr/local/bin/node_exporter
+RUN curl --fail -sL https://github.com/prometheus/node_exporter/releases/download/v0.15.2/node_exporter-0.15.2.linux-amd64.tar.gz |\
+    tar -xzO -f - node_exporter-0.15.2.linux-amd64/node_exporter > /usr/local/bin/node_exporter &&\
+    chmod +x /usr/local/bin/node_exporter
+
+COPY etc/consul.hcl /etc/consul/
 
 # Add Containerpilot configuration
 COPY etc/containerpilot.json /etc
@@ -70,14 +73,15 @@ WORKDIR /prometheus
 ENTRYPOINT []
 CMD ["/usr/local/bin/containerpilot"]
 
-HEALTHCHECK --interval=1m30s --timeout=10s --retries=3 CMD curl -f http://localhost:9090/graph || exit 1
+HEALTHCHECK --interval=1m30s --timeout=10s --retries=3 CMD /usr/bin/test "$(cat /var/run/healthcheck)" = "0" || exit 1
 
-LABEL org.label-schema.build-date=$BUILD_DATE \
-    org.label-schema.license="MPL-2.0" \
-    org.label-schema.vendor="https://bitbucket.org/double16" \
-    org.label-schema.name="Autopilot Prometheus Server" \
-    org.label-schema.url="https://github.com/double16/autopilotpattern-prometheus" \
-    org.label-schema.docker.dockerfile="Dockerfile" \
-    org.label-schema.vcs-ref=$SOURCE_REF \
-    org.label-schema.vcs-type='git' \
-    org.label-schema.vcs-url="https://github.com/double16/autopilotpattern-prometheus.git"
+LABEL maintainer="Patrick Double pat@patdouble.com" \
+      org.label-schema.build-date=$BUILD_DATE \
+      org.label-schema.license="MPL-2.0" \
+      org.label-schema.vendor="https://bitbucket.org/double16" \
+      org.label-schema.name="Autopilot Prometheus Server" \
+      org.label-schema.url="https://github.com/double16/autopilotpattern-prometheus" \
+      org.label-schema.docker.dockerfile="Dockerfile" \
+      org.label-schema.vcs-ref=$SOURCE_REF \
+      org.label-schema.vcs-type='git' \
+      org.label-schema.vcs-url="https://github.com/double16/autopilotpattern-prometheus.git"

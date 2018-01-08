@@ -1,0 +1,65 @@
+#!/bin/bash
+set -eo pipefail
+
+#
+# Update the -advertise address based on the interface that ContainerPilot has
+# been told to listen on.
+#
+preStart() {
+    _log "Updating consul advertise address"
+    sed -i "s/CONTAINERPILOT_CONSUL_IP/${CONTAINERPILOT_CONSUL_IP}/" /etc/consul/consul.hcl
+
+    if [ -n "$CONSUL_DATACENTER_NAME" ]; then
+        _log "Updating consul datacenter name (specified: '${CONSUL_DATACENTER_NAME}' )"
+        sed -i "s/CONSUL_DATACENTER_NAME/${CONSUL_DATACENTER_NAME}/" /etc/consul/consul.hcl
+    elif [ -f "/native/usr/sbin/mdata-get" ]; then
+        DETECTED_DATACENTER_NAME=$(/native/usr/sbin/mdata-get sdc:datacenter_name)
+        _log "Updating consul datacenter name (detected from Triton: '${DETECTED_DATACENTER_NAME}')"
+        sed -i "s/CONSUL_DATACENTER_NAME/${DETECTED_DATACENTER_NAME}/" /etc/consul/consul.hcl
+    elif curl --connect-timeout 10 -s -o /dev/null --fail http://169.254.169.254/latest/meta-data/placement/availability-zone; then
+        DETECTED_DATACENTER_NAME="$(curl -s http://169.254.169.254/latest/meta-data/placement/availability-zone)"
+        _log "Updating consul datacenter name (detected from AWS: '${DETECTED_DATACENTER_NAME}')"
+        sed -i "s/CONSUL_DATACENTER_NAME/${DETECTED_DATACENTER_NAME}/" /etc/consul/consul.hcl
+    else
+        _log "Updating consul datacenter name (default: 'dc1')"
+        sed -i "s/CONSUL_DATACENTER_NAME/dc1/" /etc/consul/consul.hcl
+    fi
+}
+
+health() {
+    curl -fso /dev/null http://localhost:9090/metrics
+    RESULT=$?
+    echo $RESULT > /var/run/healthcheck
+    exit $RESULT
+}
+
+_log() {
+    echo "    $(date -u '+%Y-%m-%d %H:%M:%S') containerpilot: $@"
+}
+
+# ---------------------------------------------------
+# parse arguments
+
+# Get function list
+funcs=($(declare -F -p | cut -d " " -f 3))
+
+until
+    if [ ! -z "$1" ]; then
+        # check if the first arg is a function in this file, or use a default
+        if [[ " ${funcs[@]} " =~ " $1 " ]]; then
+            cmd=$1
+            shift 1
+        fi
+
+        $cmd "$@"
+        if [ $? == 127 ]; then
+            help
+        fi
+
+        exit
+    else
+        health
+    fi
+do
+    echo
+done
