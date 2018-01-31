@@ -1,10 +1,10 @@
-FROM alpine:3.6
+FROM alpine:3.7
 
 # The official Prometheus base image has no package manager so rather than
 # artisanally hand-rolling curl and the rest of our stack we'll just use
 # Alpine so we can use `docker build`.
 
-RUN apk add --update curl bash
+RUN apk add --update curl bash jq
 
 # add Prometheus. alas, the Prometheus developers provide no checksum
 RUN export PROM_VERSION=1.7.2 \
@@ -25,8 +25,8 @@ RUN export PROM_VERSION=1.7.2 \
 # Install Consul
 # Releases at https://releases.hashicorp.com/consul
 # Add consul agent
-RUN export CONSUL_VERSION=1.0.2 \
-    && export CONSUL_CHECKSUM=418329f0f4fc3f18ef08674537b576e57df3f3026f258794b4b4b611beae6c9b \
+RUN export CONSUL_VERSION=1.0.3 \
+    && export CONSUL_CHECKSUM=4782e4662de8effe49e97c50b1a1233c03c0026881f6c004144cc3b73f446ec5 \
     && curl --silent --retry 7 --fail -o /tmp/consul.zip "https://releases.hashicorp.com/consul/${CONSUL_VERSION}/consul_${CONSUL_VERSION}_linux_amd64.zip" \
     && echo "${CONSUL_CHECKSUM}  /tmp/consul.zip" | sha256sum -c \
     && unzip /tmp/consul -d /usr/local/bin \
@@ -45,9 +45,8 @@ RUN set -ex \
     && rm /tmp/consul-template.zip
 
 # Add ContainerPilot and set its configuration file path
-ENV CONTAINERPILOT_VER 3.6.1
-ENV CONTAINERPILOT /etc/containerpilot.json
-RUN export CONTAINERPILOT_CHECKSUM=57857530356708e9e8672d133b3126511fb785ab \
+ENV CONTAINERPILOT_VER="3.6.2" CONTAINERPILOT="/etc/containerpilot.json"
+RUN export CONTAINERPILOT_CHECKSUM=b799efda15b26d3bbf8fd745143a9f4c4df74da9 \
     && curl -Lso /tmp/containerpilot.tar.gz \
     "https://github.com/joyent/containerpilot/releases/download/${CONTAINERPILOT_VER}/containerpilot-${CONTAINERPILOT_VER}.tar.gz" \
     && echo "${CONTAINERPILOT_CHECKSUM}  /tmp/containerpilot.tar.gz" | sha1sum -c \
