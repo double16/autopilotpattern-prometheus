@@ -37,8 +37,8 @@ RUN export CONSUL_VERSION=1.0.3 \
 # Install Consul template
 # Releases at https://releases.hashicorp.com/consul-template/
 RUN set -ex \
-    && export CONSUL_TEMPLATE_VERSION=0.18.0 \
-    && export CONSUL_TEMPLATE_CHECKSUM=f7adf1f879389e7f4e881d63ef3b84bce5bc6e073eb7a64940785d32c997bc4b \
+    && export CONSUL_TEMPLATE_VERSION=0.18.3 \
+    && export CONSUL_TEMPLATE_CHECKSUM=caf6018d7489d97d6cc2a1ac5f1cbd574c6db4cd61ed04b22b8db7b4bde64542 \
     && curl --retry 7 --fail -Lso /tmp/consul-template.zip "https://releases.hashicorp.com/consul-template/${CONSUL_TEMPLATE_VERSION}/consul-template_${CONSUL_TEMPLATE_VERSION}_linux_amd64.zip" \
     && echo "${CONSUL_TEMPLATE_CHECKSUM}  /tmp/consul-template.zip" | sha256sum -c \
     && unzip /tmp/consul-template.zip -d /usr/local/bin \
@@ -57,7 +57,7 @@ RUN curl --fail -sL https://github.com/prometheus/node_exporter/releases/downloa
     tar -xzO -f - node_exporter-0.15.2.linux-amd64/node_exporter > /usr/local/bin/node_exporter &&\
     chmod +x /usr/local/bin/node_exporter
 
-COPY etc/consul.hcl /etc/consul/
+COPY etc/consul.hcl /etc/consul/consul.hcl.orig
 
 # Add Containerpilot configuration
 COPY etc/containerpilot.json /etc
