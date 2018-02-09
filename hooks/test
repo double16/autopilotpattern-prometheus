@@ -36,7 +36,7 @@ function container_healthy {
 }
 
 # setup
-CONSULID=$(docker run -d -e CONSUL_DEV=1 pdouble16/autopilotpattern-consul:1.0.3-r5)
+CONSULID=$(docker run -d -e CONSUL_DEV=1 pdouble16/autopilotpattern-consul:1.0.5-r2)
 CID1=$(docker run -d -e CONSUL_AGENT=1 -e CONSUL=consul --link ${CONSULID}:consul $IMAGE_NAME)
 
 # tests

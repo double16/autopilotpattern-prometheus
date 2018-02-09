@@ -48,7 +48,7 @@
                   "-retry-max", "10",
                   "-retry-interval", "10s"],
       "health": {
-        "exec": "curl -so /dev/null http://localhost:8500",
+        "exec": ["/usr/bin/curl", "-so", "/dev/null", "http://localhost:8500"],
         "interval": 10,
         "ttl": 25
       },
@@ -69,8 +69,8 @@
         "health": {
           "exec": [ "/usr/bin/curl", "--fail", "-s", "-o", "/dev/null", "http://localhost:9100/metrics"
         ],
-          "interval": 5,
-          "ttl": 15,
+          "interval": 60,
+          "ttl": 90,
       },
     },
   ]
