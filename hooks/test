@@ -1,4 +1,4 @@
-#!/bin/bash -xe
+#!/bin/bash -e
 
 . ./hooks/env
 
@@ -21,22 +21,26 @@ function retry {
 }
 
 function finish {
+  RESULT=$?
   [ -n "$CID1" ] && docker logs ${CID1}
   [ -n "$CID1" ] && docker rm -f $CID1
   [ -n "$CONSULID" ] && docker rm -f $CONSULID
+  [ $RESULT = 0 ] && echo "PASS" || echo "FAIL"
 }
 trap finish EXIT
 
 function passing_service {
+  echo "Testing if service '$1' is healthy ..."
   docker run --rm --network container:${CONSULID} appropriate/curl -s http://localhost:8500/v1/health/state/passing | grep -q "ServiceName.*$1"
 }
 
 function container_healthy {
+  echo "Testing if container '$1' is healthy ..."
   docker inspect $1 | grep -q \"Status\".*\"healthy\"
 }
 
 # setup
-CONSULID=$(docker run -d -e CONSUL_DEV=1 pdouble16/autopilotpattern-consul:1.0.5-r2)
+CONSULID=$(docker run -d -e CONSUL_DEV=1 pdouble16/autopilotpattern-consul:1.0.6-r1)
 CID1=$(docker run -d -e CONSUL_AGENT=1 -e CONSUL=consul --link ${CONSULID}:consul $IMAGE_NAME)
 
 # tests

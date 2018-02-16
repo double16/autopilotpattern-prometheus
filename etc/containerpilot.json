@@ -48,7 +48,7 @@
                   "-retry-max", "10",
                   "-retry-interval", "10s"],
       "health": {
-        "exec": ["/usr/bin/curl", "-so", "/dev/null", "http://localhost:8500"],
+        "exec": ["/usr/bin/curl", "-sfo", "/dev/null", "http://localhost:8500/v1/status/leader"],
         "interval": 10,
         "ttl": 25
       },
@@ -57,6 +57,17 @@
         "once": "exitSuccess"
       },
       "restarts": "unlimited"
+    },
+    {
+      "name": "consul-restart",
+      "exec": [
+        "/usr/bin/pkill",
+        "consul"
+      ],
+      "when": {
+        "source": "consul-agent",
+        "each": "unhealthy"
+      }
     },
     {{ end }}
     {
