@@ -3,7 +3,7 @@
   "jobs": [
     {
       "name": "setup-config",
-      "exec": "/bin/prestart.sh"
+      "exec": "/usr/local/bin/prestart.sh"
       {{ if .CONSUL_AGENT }},
       "when": {
         "source": "consul-agent",
@@ -21,10 +21,14 @@
         "-web.console.templates=/etc/prometheus/consoles"
       ],
       "health": {
-        "exec": ["/bin/consul-manage", "health"],
+        "exec": ["/usr/local/bin/health"],
         "interval": 10,
         "ttl": 25
       },
+      interfaces: [
+        "{{ .ADVERTISE_CIDR | default "inet" }}",
+        "{{ .ADVERTISE_CIDR6 | default "inet6" }}",
+      ],
       "when": {
         "source": "setup-config",
         "once": "exitSuccess"
@@ -35,12 +39,13 @@
     {
       "name": "consul-preStart",
       "exec": [
-        "/bin/consul-manage",
+        "/usr/local/bin/consul-manage",
         "preStart"
       ]
     },
     {
       "name": "consul-agent",
+      "port": 8500,
       "exec": ["/usr/local/bin/consul", "agent",
                   "-config-dir=/etc/consul",
                   "-rejoin",
@@ -52,6 +57,10 @@
         "interval": 10,
         "ttl": 25
       },
+      interfaces: [
+        "{{ .ADVERTISE_CIDR | default "inet" }}",
+        "{{ .ADVERTISE_CIDR6 | default "inet6" }}",
+      ],
       "when": {
         "source": "consul-preStart",
         "once": "exitSuccess"
@@ -83,6 +92,10 @@
           "interval": 60,
           "ttl": 90,
       },
+      interfaces: [
+        "{{ .ADVERTISE_CIDR | default "inet" }}",
+        "{{ .ADVERTISE_CIDR6 | default "inet6" }}",
+      ],
     },
   ]
 }

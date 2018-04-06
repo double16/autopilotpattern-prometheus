@@ -1,0 +1,5 @@
+#!/bin/sh
+curl -fso /dev/null http://localhost:9090/metrics
+RESULT=$?
+echo $RESULT > /var/run/healthcheck
+exit $RESULT
