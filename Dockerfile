@@ -1,5 +1,10 @@
-FROM pdouble16/autopilotpattern-base:1.0.0
+FROM pdouble16/autopilotpattern-base:1.2.0
 FROM alpine:3.7
+
+ARG BUILD_DATE
+ARG SOURCE_TYPE
+ARG SOURCE_REF
+ARG DOCKERFILE_PATH
 
 RUN mkdir -p /var/lib/consul /etc/consul
 COPY --from=0 /usr/local/bin/* /usr/local/bin/
