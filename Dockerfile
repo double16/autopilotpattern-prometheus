@@ -1,7 +1,6 @@
-FROM pdouble16/autopilotpattern-base:1.2.0
+FROM pdouble16/autopilotpattern-base:1.3.0
 FROM alpine:3.7
 
-ARG BUILD_DATE
 ARG SOURCE_TYPE
 ARG SOURCE_REF
 ARG DOCKERFILE_PATH
@@ -56,7 +55,6 @@ CMD ["/usr/local/bin/containerpilot"]
 HEALTHCHECK --interval=1m30s --timeout=10s --retries=3 CMD /usr/bin/test "$(cat /var/run/healthcheck)" = "0" || exit 1
 
 LABEL maintainer="Patrick Double (pat@patdouble.com)" \
-      org.label-schema.build-date=$BUILD_DATE \
       org.label-schema.license="MPL-2.0" \
       org.label-schema.vendor="https://bitbucket.org/double16" \
       org.label-schema.name="Autopilot Prometheus Server" \

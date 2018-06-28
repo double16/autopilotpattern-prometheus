@@ -2,6 +2,10 @@
 
 . ./hooks/env
 
+JQ="docker run --rm -i articulate/jq"
+
+COMPOSE_PROJECT=promtest
+
 function retry {
   local retry_max=$1
   shift
@@ -22,35 +26,49 @@ function retry {
 
 function finish {
   RESULT=$?
-  [ -n "$CID1" ] && docker logs ${CID1}
-  [ -n "$CID1" ] && docker rm -f $CID1
-  [ -n "$CONSULID" ] && docker rm -f $CONSULID
+  docker-compose -p ${COMPOSE_PROJECT} -f hooks/docker-compose.yml logs
+  docker ps | grep ${COMPOSE_PROJECT}
+  docker exec ${COMPOSE_PROJECT}_consul_1 curl -s http://localhost:8500/v1/health/state/critical | ${JQ} .
+  docker-compose -p ${COMPOSE_PROJECT} -f hooks/docker-compose.yml exec consul consul members || true
+  docker-compose -p ${COMPOSE_PROJECT} -f hooks/docker-compose.yml down
   [ $RESULT = 0 ] && echo "PASS" || echo "FAIL"
 }
 trap finish EXIT
 
 function passing_service {
-  echo "Testing if service '$1' is healthy ..."
-  docker run --rm --network container:${CONSULID} appropriate/curl -s http://localhost:8500/v1/health/state/passing | grep -q "ServiceName.*$1"
+  echo -n "Testing if service '$1' is healthy ... "
+  docker run --rm --network container:${COMPOSE_PROJECT}_consul_1 appropriate/curl -s http://localhost:8500/v1/health/state/passing | grep -q "ServiceName.*$1"
+  RESULT=$?
+  [ $RESULT = 0 ] && echo "PASS" || echo "FAIL"
+  return $RESULT
 }
 
-function container_healthy {
-  echo "Testing if container '$1' is healthy ..."
-  docker inspect $1 | grep -q \"Status\".*\"healthy\"
+function until_started {
+  while docker-compose -p ${COMPOSE_PROJECT} -f hooks/docker-compose.yml ps -q | xargs docker inspect | ${JQ} -r .[].State.Health.Status | grep -q starting; do
+    echo "Waiting for services to start ..."
+    sleep 15s
+  done
 }
 
-# setup
-CONSULID=$(docker run -d -e CONSUL_DEV=1 pdouble16/autopilotpattern-consul:1.1.0-r1)
-CID1=$(docker run -d -e CONSUL_AGENT=1 -e CONSUL=consul --link ${CONSULID}:consul $IMAGE_NAME)
+function test_suite {
+  echo "Running tests ..."
+  retry 30 docker run --rm --network container:${COMPOSE_PROJECT}_prometheus_1 appropriate/nc -z -w 10 localhost 9090
 
-# tests
-retry 60 passing_service prometheus
+  retry 60 passing_service prometheus
 
-retry 125 container_healthy ${CID1}
+  retry 5 passing_service containerpilot
+  retry 5 docker exec ${COMPOSE_PROJECT}_prometheus_1 wget -O /dev/null http://localhost:9090/metrics
 
-retry 5 docker run --rm --network container:${CONSULID} appropriate/curl -s -o /dev/null http://localhost:9090/metrics
-retry 5 passing_service containerpilot
+  retry 5 passing_service node-exporter
+  retry 5 docker exec ${COMPOSE_PROJECT}_prometheus_1 wget -O /dev/null http://localhost:9100/metrics
+}
 
-retry 5 docker run --rm --network container:${CONSULID} appropriate/curl -s -o /dev/null http://localhost:9100/metrics
-retry 5 passing_service node-exporter
+export IMAGE_NAME
 
+docker-compose -p ${COMPOSE_PROJECT} -f hooks/docker-compose.yml up -d --scale consul=3
+until_started
+test_suite
+
+docker-compose -p ${COMPOSE_PROJECT} -f hooks/docker-compose.yml restart
+until_started
+test_suite
