@@ -17,8 +17,8 @@ ENV CONTAINERPILOT="/etc/containerpilot.json5"
 
 RUN apk add --no-cache curl bash jq \
 # add Prometheus. alas, the Prometheus developers provide no checksum
-    && export PROM_VERSION=1.7.2 \
-    && export PROM_CHECKSUM=a5d56b613b77e1d12e99ed5f77359d097c63cb6db64e8b04496eff186df11484 \
+    && export PROM_VERSION=2.3.1 \
+    && export PROM_CHECKSUM=adb76021fcff8a2a8363de8739fcb7ff5647c2a0ff90b2c02dcb56cf0cd836f0 \
     && export prom=prometheus-${PROM_VERSION}.linux-amd64 \
     && curl -Lso /tmp/${prom}.tar.gz https://github.com/prometheus/prometheus/releases/download/v${PROM_VERSION}/${prom}.tar.gz \
     && echo "${PROM_CHECKSUM}  /tmp/${prom}.tar.gz" | sha256sum -c \
